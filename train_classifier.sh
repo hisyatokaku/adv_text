@@ -1,0 +1,22 @@
+TRAIN_DIR="/data/ishimochi0/tonkou/1_Dataset/IMDB/train"
+PRETRAIN_DIR="/data/ishimochi0/tonkou/1_Dataset/IMDB/pretrain"
+IMDB_DATA_DIR="/data/ishimochi0/tonkou/1_Dataset/IMDB"
+CUDA_VISIBLE_DEVICES="0" python train_classifier.py \
+       --train_dir=$TRAIN_DIR \
+       --pretrained_model_dir=$PRETRAIN_DIR \
+       --data_dir=$IMDB_DATA_DIR \
+       --vocab_size=87007 \
+       --embedding_dims=256 \
+       --rnn_cell_size=1024 \
+       --cl_num_layers=1 \
+       --cl_hidden_size=30 \
+       --batch_size=64 \
+       --learning_rate=0.0005 \
+       --learning_rate_decay_factor=0.9998 \
+       --max_steps=15000 \
+       --max_grad_norm=1.0 \
+       --num_timesteps=400 \
+       --keep_prob_emb=0.5 \
+       --normalize_embeddings \
+       --adv_training_method=vat \
+       --perturb_norm_length=5.0
