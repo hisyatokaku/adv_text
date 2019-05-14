@@ -311,7 +311,6 @@ class VatxtModel(object):
       weights = inputs.weights
     logits = self.layers['cl_logits'](lstm_out)
     loss = layers_lib.classification_loss(logits, labels, weights)
-
     if return_intermediates:
       return lstm_out, next_state, logits, loss
     else:
