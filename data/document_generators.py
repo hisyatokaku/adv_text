@@ -71,6 +71,10 @@ flags.DEFINE_string('amazon_unlabeled_input_file', '',
 flags.DEFINE_string('sst5_input_dir', '',
                     'The sst5 dataset input directory.')
 
+# SST-2
+flags.DEFINE_string('sst2_input_dir', '',
+                    'The sst2 dataset input directory.')
+
 Document = namedtuple('Document',
                       'content is_validation is_test label add_tokens')
 
@@ -111,6 +115,8 @@ def documents(dataset='train',
     docs_gen = rt_documents
   elif ds == 'sst5':
     docs_gen = sst5_documents
+  elif ds == 'sst2':
+    docs_gen = sst2_documents
   else:
     raise ValueError('Unrecognized dataset %s' % FLAGS.dataset)
 
@@ -261,6 +267,57 @@ def sst5_documents(dataset='train',
         label2int = json.load(f)
 
     with open(os.path.join(FLAGS.sst5_input_dir, filename)) as db_f:
+        reader = csv.reader(db_f)
+        for row in reader:
+            is_validation = False
+
+            content = row[0]
+            label = row[1]
+            int_label = label2int.get(label, None)
+            assert isinstance(int_label, int)
+            yield Document(
+                content=content,
+                is_validation=is_validation,
+                is_test=False,
+                label=int_label,  # Labels should start from 0
+                add_tokens=True)
+
+def sst2_documents(dataset='train',
+                   include_unlabeled=False,
+                   include_validation=False):
+    """Generates Documents for sst2 dataset.
+
+    Args:
+      dataset: str, identifies the csv file within the sst2 data directory,
+        test or train.
+      include_unlabeled: bool, unused.
+      include_validation: bool, whether to include validation data, which is a
+        randomly selected 10% of the data.
+
+    Yields:
+      Document
+
+    Raises:
+      ValueError: if FLAGS.sst2_input_dir is empty.
+    """
+    del include_unlabeled
+
+    if not FLAGS.sst2_input_dir:
+        raise ValueError('Must provide FLAGS.sst2_input_dir')
+
+    if dataset == 'train':
+        filename = 'sst2_train_sentences.csv'
+    elif dataset == 'dev':
+        filename = 'sst2_dev.csv'
+    elif dataset == 'test':
+        filename = 'sst2_test.csv'
+    tf.logging.info('Generating sst2 documents...')
+
+    label2int_path = os.path.join(FLAGS.sst2_input_dir, 'label2int_sst2.txt')
+    with open(label2int_path, 'r') as f:
+        label2int = json.load(f)
+
+    with open(os.path.join(FLAGS.sst2_input_dir, filename)) as db_f:
         reader = csv.reader(db_f)
         for row in reader:
             is_validation = False

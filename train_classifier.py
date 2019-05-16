@@ -50,11 +50,12 @@ def main(_):
   tf.logging.set_verbosity(tf.logging.INFO)
   with tf.device(tf.train.replica_device_setter(FLAGS.ps_tasks)):
     model = graphs.get_model()
-    train_op, loss, global_step = model.classifier_training()
+    train_op, loss, tensors_op_dict, global_step = model.classifier_training()
     train_utils.run_training(
         train_op,
         loss,
         global_step,
+        tensors_op_dict,
         variables_to_restore=model.pretrained_variables,
         pretrained_model_dir=FLAGS.pretrained_model_dir)
 

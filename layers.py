@@ -55,6 +55,7 @@ class Embedding(K.layers.Layer):
     self.normalized = normalize
     self.keep_prob = keep_prob
 
+    print("Embedding normaliztion: ", self.normalized)
     if normalize:
       assert vocab_freqs is not None
       self.vocab_freqs = tf.constant(

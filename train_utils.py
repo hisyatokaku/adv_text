@@ -18,6 +18,8 @@ from __future__ import division
 from __future__ import print_function
 
 import time
+import os
+import pickle
 
 # Dependency imports
 
@@ -40,6 +42,7 @@ flags.DEFINE_boolean('log_device_placement', False,
 def run_training(train_op,
                  loss,
                  global_step,
+                 tensors_op_dict=None,
                  variables_to_restore=None,
                  pretrained_model_dir=None):
   """Sets up and runs training loop."""
@@ -89,7 +92,7 @@ def run_training(train_op,
     # Training loop
     global_step_val = 0
     while not sv.should_stop() and global_step_val < FLAGS.max_steps:
-      global_step_val = train_step(sess, train_op, loss, global_step)
+      global_step_val = train_step(sess, train_op, loss, tensors_op_dict, global_step)
 
     # Final checkpoint
     if is_chief and global_step_val >= FLAGS.max_steps:
@@ -112,10 +115,21 @@ def maybe_restore_pretrained_model(sess, saver_for_restore, model_dir):
   saver_for_restore.restore(sess, pretrain_ckpt.model_checkpoint_path)
 
 
-def train_step(sess, train_op, loss, global_step):
+def train_step(sess, train_op, loss, tensors_op_dict, global_step):
   """Runs a single training step."""
   start_time = time.time()
-  _, loss_val, global_step_val = sess.run([train_op, loss, global_step])
+  if tensors_op_dict:
+      tokens = tensors_op_dict['inputs']
+      embedding = tensors_op_dict['cl_embedded']
+      embedding_weight = tensors_op_dict['embedding_weight']
+      logits = tensors_op_dict['cl_logits']
+      perturb = tensors_op_dict['perturb']
+      labels = tensors_op_dict['labels']
+
+      _, loss_val, tokens_val, embedding_val, embedding_weight_val, logits_val, perturb_val, labels_val, global_step_val = sess.run(
+          [train_op, loss, tokens, embedding, embedding_weight, logits, perturb, labels, global_step])
+  else:
+      _, loss_val, global_step_val = sess.run([train_op, loss, global_step])
   duration = time.time() - start_time
 
   # Logging
@@ -127,7 +141,26 @@ def train_step(sess, train_op, loss, global_step):
     tf.logging.info(format_str % (global_step_val, loss_val, examples_per_sec,
                                   sec_per_batch))
 
+  if tensors_op_dict and global_step_val % 1000 == 0:
+    vars_dict = (
+        {'embedding': embedding_val,
+         'perturb': perturb_val,
+         'labels': labels_val,
+         'tokens': tokens_val,
+         'embedding_weight': embedding_weight_val,
+         'logits': logits_val
+         }
+    )
+    with open(os.path.join(FLAGS.train_dir, "vars-{}.pkl".format(global_step_val)), 'wb') as f:
+        pickle.dump(vars_dict, f)
+
   if np.isnan(loss_val):
     raise OverflowError('Loss is nan')
 
   return global_step_val
+
+def compute_intermediate_tensors_step(sess, tensors_op_dict, global_step):
+  keys = [k for k, v in tensors_op_dict.items()]
+  ops = [v for k, v in tensors_op_dict.items()]
+  sess.run(ops)
+  pass

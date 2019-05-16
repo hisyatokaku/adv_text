@@ -156,7 +156,7 @@ class VatxtModel(object):
   def classifier_training(self):
     loss = self.classifier_graph()
     train_op = optimize(loss, self.global_step)
-    return train_op, loss, self.global_step
+    return train_op, loss, self.tensors, self.global_step
 
   def language_model_training(self):
     loss = self.language_model_graph()
@@ -169,12 +169,15 @@ class VatxtModel(object):
     * Caches the VatxtInput object in `self.cl_inputs`
     * Caches tensors: `cl_embedded`, `cl_logits`, `cl_loss`
 
+
     Returns:
       loss: scalar float.
     """
     inputs = _inputs('train', pretrain=False)
     self.cl_inputs = inputs
+    self.tensors['inputs'] = inputs.tokens
     embedded = self.layers['embedding'](inputs.tokens)
+    self.tensors['embedding_weight'] = self.layers['embedding'].var
     self.tensors['cl_embedded'] = embedded
 
     _, next_state, logits, loss = self.cl_loss_from_embedding(
@@ -182,6 +185,7 @@ class VatxtModel(object):
     tf.summary.scalar('classification_loss', loss)
     self.tensors['cl_logits'] = logits
     self.tensors['cl_loss'] = loss
+    self.tensors['perturb'] = self.calculate_perturb(embedded, loss)
 
     if FLAGS.single_label:
       indices = tf.stack([tf.range(FLAGS.batch_size), inputs.length - 1], 1)
@@ -190,6 +194,8 @@ class VatxtModel(object):
     else:
       labels = inputs.labels
       weights = inputs.weights
+
+    self.tensors['labels'] = labels
     acc = layers_lib.accuracy(logits, labels, weights)
     tf.summary.scalar('accuracy', acc)
 
@@ -277,6 +283,27 @@ class VatxtModel(object):
 
     var_restore_dict = make_restore_average_vars_dict()
     return eval_ops, var_restore_dict
+
+  def calculate_perturb(self,
+                        embedded,
+                        loss):
+    def _scale_l2(x, norm_length):
+      # shape(x) = (batch, num_timesteps, d)
+      # Divide x by max(abs(x)) for a numerically stable L2 norm.
+      # 2norm(x) = a * 2norm(x/a)
+      # Scale over the full sequence, dims (1, 2)
+      alpha = tf.reduce_max(tf.abs(x), (1, 2), keep_dims=True) + 1e-12
+      l2_norm = alpha * tf.sqrt(
+        tf.reduce_sum(tf.pow(x / alpha, 2), (1, 2), keep_dims=True) + 1e-6)
+      x_unit = x / l2_norm
+      return norm_length * x_unit
+    grad, = tf.gradients(
+        loss,
+        embedded,
+        aggregation_method=tf.AggregationMethod.EXPERIMENTAL_ACCUMULATE_N)
+    grad = tf.stop_gradient(grad)
+    perturb = _scale_l2(grad, FLAGS.perturb_norm_length)
+    return perturb
 
   def cl_loss_from_embedding(self,
                              embedded,
