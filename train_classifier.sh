@@ -27,8 +27,8 @@ CUDA_VISIBLE_DEVICES=${GPU} python train_classifier.py \
        --num_classes=${NUM_CLASSES} \
        --keep_prob_emb=0.5 \
        --normalize_embeddings=True \
-       --adv_training_method='' \
-       --perturb_norm_length=5.0
+       --adv_training_method='at' \
+       --perturb_norm_length=1.0
 
 echo "making metadata..."
 python dump_metadata.py \
