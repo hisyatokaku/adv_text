@@ -75,6 +75,10 @@ flags.DEFINE_string('sst5_input_dir', '',
 flags.DEFINE_string('sst2_input_dir', '',
                     'The sst2 dataset input directory.')
 
+# use_augmentation
+flags.DEFINE_boolean('use_augmented_train_data', False,
+                    'specify to use augmented dataset.')
+
 Document = namedtuple('Document',
                       'content is_validation is_test label add_tokens')
 
@@ -307,10 +311,13 @@ def sst2_documents(dataset='train',
 
     if dataset == 'train':
         filename = 'sst2_train_sentences.csv'
+        if FLAGS.use_augmented_train_data:
+            print("=== use augmented data. ===")
+            filename = 'sst2_train_sentences.csv'
     elif dataset == 'dev':
         filename = 'sst2_dev.csv'
     elif dataset == 'test':
-        filename = 'sst2_test.csv'
+        filename = 'sst2_perturbated_test.csv'
     tf.logging.info('Generating sst2 documents...')
 
     label2int_path = os.path.join(FLAGS.sst2_input_dir, 'label2int_sst2.txt')
@@ -325,6 +332,8 @@ def sst2_documents(dataset='train',
             content = row[0]
             label = row[1]
             int_label = label2int.get(label, None)
+
+
             assert isinstance(int_label, int)
             yield Document(
                 content=content,
