@@ -91,13 +91,14 @@ def run_training(train_op,
 
     # Training loop
     global_step_val = 0
+    macro_vars_dict = None
+
     while not sv.should_stop() and global_step_val < FLAGS.max_steps:
-      global_step_val = train_step(sess, train_op, loss, tensors_op_dict, global_step)
+      global_step_val, macro_vars_dict = train_step(sess, train_op, loss, tensors_op_dict, macro_vars_dict, 200, global_step)
 
     # Final checkpoint
     if is_chief and global_step_val >= FLAGS.max_steps:
       sv.saver.save(sess, sv.save_path, global_step=global_step)
-
 
 def maybe_restore_pretrained_model(sess, saver_for_restore, model_dir):
   """Restores pretrained model if there is no ckpt model."""
@@ -115,7 +116,7 @@ def maybe_restore_pretrained_model(sess, saver_for_restore, model_dir):
   saver_for_restore.restore(sess, pretrain_ckpt.model_checkpoint_path)
 
 
-def train_step(sess, train_op, loss, tensors_op_dict, global_step):
+def train_step(sess, train_op, loss, tensors_op_dict, macro_vars_dict, max_to_keep, global_step):
   """Runs a single training step."""
   start_time = time.time()
   if tensors_op_dict:
@@ -132,8 +133,29 @@ def train_step(sess, train_op, loss, tensors_op_dict, global_step):
       _, loss_val, global_step_val = sess.run([train_op, loss, global_step])
   duration = time.time() - start_time
 
+  vars_dict = (
+      {'embedding': [embedding_val],
+       'perturb': [perturb_val],
+       'labels': [labels_val],
+       'tokens': [tokens_val],
+       'embedding_weight': [embedding_weight_val],
+       'logits': [logits_val],
+       'global_step': [global_step_val],
+       }
+  )
+
+  # update macro_vars_dict, if its 0th step, create macro_vars_dict
+  if macro_vars_dict is None:
+    macro_vars_dict = vars_dict
+  else:
+    for k, v in vars_dict.items():
+      macro_vars_dict[k] += v
+  if len(macro_vars_dict['global_step']) % max_to_keep == 0:
+    for k, v in vars_dict.items():
+      # discard old batch
+      macro_vars_dict[k] = macro_vars_dict[k][-max_to_keep:]
   # Logging
-  if global_step_val % 10 == 0:
+  if global_step_val % 100 == 0:
     examples_per_sec = FLAGS.batch_size / duration
     sec_per_batch = float(duration)
 
@@ -142,22 +164,13 @@ def train_step(sess, train_op, loss, tensors_op_dict, global_step):
                                   sec_per_batch))
 
   if tensors_op_dict and global_step_val % 1000 == 0:
-    vars_dict = (
-        {'embedding': embedding_val,
-         'perturb': perturb_val,
-         'labels': labels_val,
-         'tokens': tokens_val,
-         'embedding_weight': embedding_weight_val,
-         'logits': logits_val
-         }
-    )
     with open(os.path.join(FLAGS.train_dir, "vars-{}.pkl".format(global_step_val)), 'wb') as f:
-        pickle.dump(vars_dict, f)
+        pickle.dump(macro_vars_dict, f)
 
   if np.isnan(loss_val):
     raise OverflowError('Loss is nan')
 
-  return global_step_val
+  return global_step_val, macro_vars_dict
 
 def compute_intermediate_tensors_step(sess, tensors_op_dict, global_step):
   keys = [k for k, v in tensors_op_dict.items()]
