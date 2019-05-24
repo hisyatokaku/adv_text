@@ -11,16 +11,18 @@ IMDB_EVAL_DIR="${EXPERIMENT_DIR}/eval/Imdb/unidir_short"
 SST5_RAW_DIR="${DATA_DIR}/4_sst/stanfordSentimentTreebank/SST_data_extraction-master"
 SST5_DATA_DIR="${DATA_DIR}/4_sst/stanfordSentimentTreebank/adv_processed"
 SST5_PRETRAIN_DIR="${EXPERIMENT_DIR}/pretrain/sst5/unidir"
-SST5_TRAIN_DIR="${EXPERIMENT_DIR}/train/sst5/unidir_test"
-SST5_EVAL_DIR="${EXPERIMENT_DIR}/eval/sst5/unidir_test"
+SST5_TRAIN_DIR="${EXPERIMENT_DIR}/train/sst5/unidir_at_norm5"
+SST5_EVAL_DIR="${EXPERIMENT_DIR}/eval/sst5/unidir_at_norm5"
 
 SST2_RAW_DIR="${DATA_DIR}/4_sst/stanfordSentimentTreebank/SST_data_extraction-master"
 SST2_DATA_DIR="${DATA_DIR}/4_sst/stanfordSentimentTreebank/adv_processed_sst2"
 SST2_PRETRAIN_DIR="${EXPERIMENT_DIR}/pretrain/sst2/unidir"
-SST2_TRAIN_DIR="${EXPERIMENT_DIR}/train/sst2/unidir"
-SST2_EVAL_DIR="${EXPERIMENT_DIR}/eval/sst2/unidir"
+SST2_TRAIN_DIR="${EXPERIMENT_DIR}/train/sst2/unidir_at_norm1_outputall"
+SST2_EVAL_DIR="${EXPERIMENT_DIR}/eval/sst2/unidir_at_norm1_test"
 
-DATA="imdb"
+SST2_PERB_TEST_DATA_DIR="${DATA_DIR}/4_sst/stanfordSentimentTreebank/perb_test_adv_processed_sst2"
+
+DATA="sst2"
 GPU="0"
 
 if [ $DATA = "sst5" ]; then
