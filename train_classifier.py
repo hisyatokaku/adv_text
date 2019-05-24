@@ -35,6 +35,9 @@ from __future__ import print_function
 
 import tensorflow as tf
 
+config = tf.ConfigProto()
+config.gpu_options.allow_growth = True
+
 import graphs
 import train_utils
 
